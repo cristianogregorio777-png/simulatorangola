@@ -645,7 +645,7 @@ export function MapView({
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0"
+      className="absolute inset-0 bg-[#101820]"
       aria-label="Mapa interativo de Angola com seis províncias disponíveis"
     />
   );

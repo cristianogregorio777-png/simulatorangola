@@ -90,28 +90,6 @@ export function AuthPanel({ initialMode = "sign-up", onSuccess }: AuthPanelProps
 
   const canSubmit = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length >= 6;
 
-  const handleGoogleSignIn = async () => {
-    if (!supabase) {
-      setError("Supabase não está configurado.");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/simulacao`,
-      },
-    });
-
-    if (oauthError) {
-      setError(oauthError.message);
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="rounded-[8px] border border-white/10 bg-[#0b1116]/95 p-5 shadow-[0_28px_90px_rgba(0,0,0,.45)] backdrop-blur-xl">
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -131,22 +109,6 @@ export function AuthPanel({ initialMode = "sign-up", onSuccess }: AuthPanelProps
         >
           {mode === "sign-up" ? "Já tenho conta" : "Criar conta"}
         </button>
-      </div>
-
-      <button
-        type="button"
-        onClick={handleGoogleSignIn}
-        disabled={loading}
-        className="mb-4 flex w-full items-center justify-center gap-3 rounded-[8px] border border-white/10 bg-white px-4 py-3 text-sm font-semibold text-[#101418] transition hover:bg-sand disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        <span className="font-display text-base">G</span>
-        Continuar com o Google
-      </button>
-
-      <div className="mb-4 flex items-center gap-3 text-xs text-sand-muted">
-        <span className="h-px flex-1 bg-white/10" />
-        ou
-        <span className="h-px flex-1 bg-white/10" />
       </div>
 
       <form className="space-y-3" onSubmit={handleSubmit}>

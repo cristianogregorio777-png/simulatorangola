@@ -52,8 +52,39 @@ export const MAPTILER_STYLE_URL = MAPTILER_API_KEY
   ? `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_API_KEY}`
   : null;
 
+export const MAPTILER_SATELLITE_RASTER_STYLE: StyleSpecification | null =
+  MAPTILER_API_KEY
+    ? {
+        version: 8,
+        name: "MapTiler Satellite Angola",
+        sources: {
+          satellite: {
+            type: "raster",
+            tiles: [
+              `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${MAPTILER_API_KEY}`,
+            ],
+            tileSize: 256,
+            attribution:
+              '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+          },
+        },
+        layers: [
+          {
+            id: "satellite",
+            type: "raster",
+            source: "satellite",
+            paint: {
+              "raster-opacity": 1,
+            },
+          },
+        ],
+      }
+    : null;
+
 export const MAP_STYLE =
-  process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? MAPTILER_STYLE_URL ?? LOCAL_MAP_STYLE;
+  process.env.NEXT_PUBLIC_MAP_STYLE_URL ??
+  MAPTILER_SATELLITE_RASTER_STYLE ??
+  LOCAL_MAP_STYLE;
 
 export const MAP_MIN_ZOOM = 4;
 export const MAP_MAX_ZOOM = 16;
