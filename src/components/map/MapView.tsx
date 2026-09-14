@@ -158,11 +158,6 @@ export function MapView({
 
     map.scrollZoom.enable();
     map.touchZoomRotate.disableRotation();
-    map.addControl(
-      new maplibregl.NavigationControl({ showCompass: false }),
-      "bottom-right",
-    );
-
     const clearPopup = () => {
       popupRef.current?.remove();
       popupRef.current = null;
