@@ -44,6 +44,7 @@ const MUNICIPALITY_SOURCE_ID = "luanda-municipality-points";
 const MUNICIPALITY_HIT_LAYER_ID = "luanda-municipality-hit";
 const MUNICIPALITY_GLOW_LAYER_ID = "luanda-municipality-glow";
 const MUNICIPALITY_DOT_LAYER_ID = "luanda-municipality-dot";
+const MUNICIPALITY_FOCUS_ZOOM = 10.65;
 
 const PROVINCE_COLLECTION: GeoJSON.FeatureCollection<
   GeoJSON.Point,
@@ -107,6 +108,38 @@ function getMunicipalityById(municipalityId: string) {
   return municipalityLookup.get(municipalityId);
 }
 
+function getInitialMapView(
+  provinceId: string | null,
+  municipalityId: string | null,
+) {
+  const municipality = municipalityId ? getMunicipalityById(municipalityId) : null;
+  if (municipality) {
+    return {
+      center: [municipality.coordinates.lng, municipality.coordinates.lat] as [
+        number,
+        number,
+      ],
+      zoom: MUNICIPALITY_FOCUS_ZOOM,
+    };
+  }
+
+  const province = provinceId ? getProvinceById(provinceId) : null;
+  if (province) {
+    return {
+      center: [province.coordinates.lng, province.coordinates.lat] as [
+        number,
+        number,
+      ],
+      zoom: PROVINCE_FOCUS_ZOOM,
+    };
+  }
+
+  return {
+    center: WORLD_OVERVIEW_CENTER,
+    zoom: ANGOLA_OVERVIEW_ZOOM,
+  };
+}
+
 function setLayerVisibility(
   map: maplibregl.Map,
   layerId: string,
@@ -143,11 +176,13 @@ export function MapView({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    const initialView = getInitialMapView(activeProvinceId, activeMunicipalityId);
+
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: MAP_STYLE,
-      center: WORLD_OVERVIEW_CENTER,
-      zoom: ANGOLA_OVERVIEW_ZOOM,
+      center: initialView.center,
+      zoom: initialView.zoom,
       minZoom: MAP_MIN_ZOOM,
       maxZoom: MAP_MAX_ZOOM,
       attributionControl: { compact: true },
@@ -207,7 +242,7 @@ export function MapView({
 
       map.easeTo({
         center: [municipality.coordinates.lng, municipality.coordinates.lat],
-        zoom: 8.95,
+        zoom: MUNICIPALITY_FOCUS_ZOOM,
         duration: CAMERA_TRANSITION_DURATION_MS,
         easing: (t) => 1 - Math.pow(1 - t, 3),
       });
@@ -388,6 +423,28 @@ export function MapView({
           ],
         },
       });
+
+      if (activeProvinceId) {
+        map.setFeatureState(
+          { source: PROVINCE_SOURCE_ID, id: activeProvinceId },
+          { selected: true },
+        );
+        selectedProvinceIdRef.current = activeProvinceId;
+      }
+
+      const province = activeProvinceId ? getProvinceById(activeProvinceId) : null;
+      const isLuanda = province?.slug === "luanda";
+      setLayerVisibility(map, MUNICIPALITY_HIT_LAYER_ID, Boolean(isLuanda));
+      setLayerVisibility(map, MUNICIPALITY_GLOW_LAYER_ID, Boolean(isLuanda));
+      setLayerVisibility(map, MUNICIPALITY_DOT_LAYER_ID, Boolean(isLuanda));
+
+      if (activeMunicipalityId) {
+        map.setFeatureState(
+          { source: MUNICIPALITY_SOURCE_ID, id: activeMunicipalityId },
+          { selected: true },
+        );
+        selectedMunicipalityIdRef.current = activeMunicipalityId;
+      }
 
       map.on("mouseenter", PROVINCE_HIT_LAYER_ID, (event) => {
         const feature = event.features?.[0];
@@ -575,7 +632,7 @@ export function MapView({
       if (municipality) {
         map.easeTo({
           center: [municipality.coordinates.lng, municipality.coordinates.lat],
-          zoom: 8.95,
+          zoom: MUNICIPALITY_FOCUS_ZOOM,
           duration: CAMERA_TRANSITION_DURATION_MS,
           easing: (t) => 1 - Math.pow(1 - t, 3),
         });
