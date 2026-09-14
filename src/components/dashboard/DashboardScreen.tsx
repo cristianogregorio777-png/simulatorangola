@@ -39,13 +39,13 @@ const provinceImages: Record<string, string> = {
 };
 
 const menuItems = [
-  "Mundo",
-  "Empresa",
-  "Finanças",
-  "Operações",
-  "Mercado",
-  "Eventos",
-  "Configurações",
+  ["Mundo", "◉"],
+  ["Empresa", "▤"],
+  ["Finanças", "▥"],
+  ["Operações", "⌘"],
+  ["Mercado", "◇"],
+  ["Eventos", "□"],
+  ["Configurações", "○"],
 ];
 
 export function DashboardScreen() {
@@ -131,7 +131,7 @@ export function DashboardScreen() {
             </div>
 
             <nav className="space-y-2">
-              {menuItems.map((item, index) => (
+              {menuItems.map(([item, icon], index) => (
                 <button
                   key={item}
                   type="button"
@@ -141,10 +141,9 @@ export function DashboardScreen() {
                       : "text-sand-muted hover:bg-white/[0.04] hover:text-sand"
                   }`}
                 >
-                  <span
-                    aria-hidden="true"
-                    className="h-4 w-4 rounded-[4px] border border-current opacity-80"
-                  />
+                  <span aria-hidden="true" className="w-5 text-center text-base">
+                    {icon}
+                  </span>
                   {item}
                 </button>
               ))}
@@ -154,8 +153,8 @@ export function DashboardScreen() {
               <p className="mb-4 font-mono text-[10px] tracking-[0.16em] uppercase text-sand-muted">
                 Angola
               </p>
-              <p className="text-sm leading-6 text-white">
-                Grandes decisões constroem grandes negócios.
+              <p className="text-sm leading-6 text-white/90">
+                Decisões claras para mercados complexos.
               </p>
               <div className="mt-6 h-px w-10 bg-ochre" />
             </div>
@@ -248,17 +247,17 @@ function TopBar({
 }) {
   return (
     <header className="flex h-auto flex-col gap-4 border-b border-white/10 px-4 py-4 sm:px-6 lg:h-24 lg:flex-row lg:items-center lg:justify-between xl:px-8">
-      <div className="grid gap-4 sm:grid-cols-3 lg:min-w-[58rem]">
+      <div className="grid min-w-0 flex-1 gap-4 sm:grid-cols-3">
         <TopMeta label="12 de Março de 2025" value="Dia 12" />
         <TopMeta label="Tempo do jogo" value="10:45" />
         <TopMeta label="Localização atual" value="Luanda" />
       </div>
-      <div className="flex items-center justify-between gap-4 border-l border-white/10 pl-0 lg:pl-6">
+      <div className="flex shrink-0 items-center justify-between gap-4 border-l border-white/10 pl-0 lg:pl-6">
         <span className="text-lg text-sand-muted">♡</span>
         <div className="h-11 w-11 rounded-full border border-white/10 bg-[linear-gradient(135deg,#d7e3ef,#33404d)]" />
         <div>
           <p className="text-sm font-semibold text-white">
-            {userEmail ? userEmail.split("@")[0] : "Convidado"}
+            {userEmail ? userEmail.split("@")[0] : "João Silva"}
           </p>
           <button
             type="button"
@@ -320,7 +319,10 @@ function LocationCard({ province }: { province: string }) {
         <Info label="População" value="9,3 M" />
         <Info label="Moeda" value="Kwanza" />
       </div>
-      <button className="mt-5 flex w-full items-center justify-between rounded-[8px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-sand hover:bg-white/[0.07]">
+      <button
+        type="button"
+        className="mt-5 flex w-full items-center justify-between rounded-[8px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-sand hover:bg-white/[0.07]"
+      >
         Ver detalhes
         <span>→</span>
       </button>
@@ -343,10 +345,13 @@ function ProvinceSummary({ province }: { province: string }) {
       <h2 className="font-display text-xl font-medium text-white">{province}</h2>
       <p className="mt-2 text-sm text-sand-muted">Capital de Angola</p>
       <p className="mt-5 text-sm leading-6 text-sand">
-        O maior centro económico do país, com forte movimentação comercial e
-        maior acesso a mercado.
+        Centro económico principal, alta circulação comercial e maior densidade
+        de clientes.
       </p>
-      <button className="mt-6 rounded-[8px] border border-white/10 px-4 py-2 text-sm text-sand-muted hover:text-sand">
+      <button
+        type="button"
+        className="mt-6 rounded-[8px] border border-white/10 px-4 py-2 text-sm text-sand-muted hover:text-sand"
+      >
         Ver províncias →
       </button>
     </article>

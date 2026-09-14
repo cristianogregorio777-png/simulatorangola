@@ -65,8 +65,8 @@ export function SimulationGate({ userEmail }: SimulationGateProps) {
           aria-hidden="true"
           className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(201,138,60,0.12),_transparent_28%),linear-gradient(180deg,_#0a0c0e_0%,_#050607_100%)]"
         />
-        <div className="relative z-10 border border-void-line bg-void/62 px-5 py-4 font-mono text-[10px] tracking-[0.26em] uppercase text-sand-muted backdrop-blur-xl">
-          A carregar estado da localização...
+        <div className="relative z-10 rounded-[8px] border border-void-line bg-void/72 px-5 py-4 text-sm text-sand-muted backdrop-blur-xl">
+          A carregar a simulação...
         </div>
       </main>
     );
@@ -86,16 +86,16 @@ export function SimulationGate({ userEmail }: SimulationGateProps) {
           transition={{ duration: 0.55, ease: "easeOut" }}
           className="relative z-10 w-full max-w-xl"
         >
-          <div className="mb-5 border border-void-line bg-void/62 p-5 backdrop-blur-xl">
-            <p className="font-mono text-[10px] tracking-[0.28em] uppercase text-sand-muted">
-              Área protegida
+          <div className="mb-5 rounded-[8px] border border-void-line bg-void/72 p-5 backdrop-blur-xl">
+            <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-sand-muted">
+              Acesso à simulação
             </p>
-            <h1 className="mt-2 font-display text-3xl tracking-tight text-sand">
-              Cria a tua conta para começar a tua primeira simulação.
+            <h1 className="mt-2 font-display text-3xl text-sand">
+              Entre para guardar o progresso do seu negócio.
             </h1>
             <p className="mt-3 max-w-lg font-body text-sm leading-relaxed text-sand-muted">
-              A exploração do mapa continua pública. Para iniciar a simulação,
-              precisamos associar a localização escolhida a uma conta.
+              A conta mantém localização, caixa, eventos e decisões da empresa
+              sincronizados no Supabase.
             </p>
           </div>
 
@@ -109,27 +109,27 @@ export function SimulationGate({ userEmail }: SimulationGateProps) {
     <main className="relative min-h-screen overflow-hidden bg-void px-6 py-10">
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(201,138,60,0.12),_transparent_28%),linear-gradient(180deg,_#0a0c0e_0%,_#050607_100%)]"
+        className="absolute inset-0 bg-[linear-gradient(180deg,_#0b1116_0%,_#070b0e_100%)]"
       />
 
       <motion.section
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, ease: "easeOut" }}
-        className="relative z-10 mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl flex-col justify-between gap-6"
+        className="relative z-10 mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-6xl flex-col justify-between gap-6"
       >
-        <div className="border border-void-line bg-void/62 p-5 backdrop-blur-xl sm:p-6">
+        <div className="rounded-[8px] border border-void-line bg-white/[0.025] p-5 backdrop-blur-xl sm:p-6">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
             <div>
-              <p className="font-mono text-[10px] tracking-[0.28em] uppercase text-sand-muted">
-                Sessão ativa
+              <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-sand-muted">
+                Painel de operação
               </p>
-              <h1 className="mt-2 font-display text-3xl tracking-tight text-sand sm:text-4xl">
-                Pronto para avançar.
+              <h1 className="mt-2 font-display text-3xl text-sand sm:text-4xl">
+                {currentLocationLabel}
               </h1>
               <p className="mt-3 max-w-2xl font-body text-sm leading-relaxed text-sand-muted">
-                A tua conta está autenticada. A localização guardada já pode
-                ser usada pelo futuro Simulation Engine.
+                Empresa comercial ativa, com caixa inicial, objetivos de
+                faturação e histórico pronto para eventos de IA.
               </p>
             </div>
 
@@ -137,7 +137,7 @@ export function SimulationGate({ userEmail }: SimulationGateProps) {
               type="button"
               onClick={handleLogout}
               disabled={loggingOut}
-              className="border border-void-line bg-transparent px-4 py-3 font-mono text-[10px] tracking-[0.24em] uppercase text-sand-muted transition-colors hover:border-ochre/40 hover:text-sand disabled:cursor-not-allowed"
+              className="rounded-[8px] border border-void-line bg-transparent px-4 py-3 font-mono text-[10px] tracking-[0.14em] uppercase text-sand-muted transition-colors hover:border-ochre/40 hover:text-sand disabled:cursor-not-allowed"
             >
               {loggingOut ? "A sair..." : "Logout"}
             </button>
@@ -145,8 +145,8 @@ export function SimulationGate({ userEmail }: SimulationGateProps) {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="border border-void-line bg-void/66 p-5 backdrop-blur-xl">
-            <p className="font-mono text-[10px] tracking-[0.28em] uppercase text-sand-muted">
+          <div className="rounded-[8px] border border-void-line bg-white/[0.025] p-5 backdrop-blur-xl">
+            <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-sand-muted">
               Localização ativa
             </p>
             <h2 className="mt-2 font-display text-2xl text-sand">
@@ -168,29 +168,28 @@ export function SimulationGate({ userEmail }: SimulationGateProps) {
             </div>
           </div>
 
-          <div className="border border-void-line bg-void/66 p-5 backdrop-blur-xl">
-            <p className="font-mono text-[10px] tracking-[0.28em] uppercase text-sand-muted">
-              Próximo passo
+          <div className="rounded-[8px] border border-void-line bg-white/[0.025] p-5 backdrop-blur-xl">
+            <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-sand-muted">
+              Operação
             </p>
             <h2 className="mt-2 font-display text-2xl text-sand">
-              Estrutura pronta
+              Loja / Comércio
             </h2>
             <p className="mt-3 font-body text-sm leading-relaxed text-sand-muted">
-              O espaço da simulação está reservado. Na próxima fase, este
-              ponto receberá a Simulation Engine, a economia e os restantes
-              sistemas.
+              Saldo, progresso e eventos ficam persistidos por usuário. As
+              recomendações de IA entram pelo endpoint seguro do servidor.
             </p>
             <button
               type="button"
               onClick={() => router.push("/")}
-              className="mt-5 border border-ochre/45 bg-ochre/10 px-4 py-3 font-mono text-[10px] tracking-[0.24em] uppercase text-sand transition-colors hover:bg-ochre/15"
+              className="mt-5 rounded-[8px] border border-ochre/45 bg-ochre/10 px-4 py-3 font-mono text-[10px] tracking-[0.14em] uppercase text-sand transition-colors hover:bg-ochre/15"
             >
               Voltar ao mapa
             </button>
           </div>
         </div>
 
-        <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-sand-muted/80">
+        <div className="font-mono text-[10px] tracking-[0.14em] uppercase text-sand-muted/80">
           Sessão persistente ativa via Supabase Auth
         </div>
       </motion.section>
@@ -201,7 +200,7 @@ export function SimulationGate({ userEmail }: SimulationGateProps) {
 function Line({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-void-line pb-3">
-      <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-sand-muted">
+      <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-sand-muted">
         {label}
       </span>
       <span className="max-w-[60%] text-right font-body text-sm text-sand">
