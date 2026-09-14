@@ -87,6 +87,7 @@ export function DashboardScreen() {
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("sign-in");
   const [continueAfterLogin, setContinueAfterLogin] = useState(false);
+  const [companyCreated, setCompanyCreated] = useState(false);
   const [sim, setSim] = useState<SimulationState>(initialSimulation);
   const [events, setEvents] = useState([
     { title: "Venda realizada", detail: "+125 000 Kz", time: "10:32", tone: "good" },
@@ -123,7 +124,7 @@ export function DashboardScreen() {
   );
 
   useEffect(() => {
-    if (sim.speed === 0) return;
+    if (!companyCreated || sim.speed === 0) return;
 
     const interval = window.setInterval(() => {
       setSim((current) => {
@@ -150,7 +151,7 @@ export function DashboardScreen() {
     }, 1800 / sim.speed);
 
     return () => window.clearInterval(interval);
-  }, [sim.speed]);
+  }, [companyCreated, sim.speed]);
 
   const handleProtectedTab = (tab: DashboardTab, protectedTab: boolean) => {
     if (protectedTab && !isAuthenticated) {
@@ -162,13 +163,28 @@ export function DashboardScreen() {
     setActiveTab(tab);
   };
 
+  const handleCreateCompany = () => {
+    if (!isAuthenticated) {
+      setAuthMode("sign-up");
+      setShowAuth(true);
+      return;
+    }
+
+    if (!selectedBusinessLocation) confirmLocation();
+    setCompanyCreated(true);
+    setActiveTab("Empresa");
+  };
+
   const handleProvinceSelect = (provinceId: string) => {
     selectProvince(provinceId);
     if (provinceId === "prov-luanda") selectMunicipality("mun-luanda");
   };
 
   const handleStart = () => {
-    if (!selectedBusinessLocation) confirmLocation();
+    if (!companyCreated) {
+      handleCreateCompany();
+      return;
+    }
 
     if (!isAuthenticated) {
       setContinueAfterLogin(true);
@@ -277,10 +293,11 @@ export function DashboardScreen() {
 
           <div className="grid gap-5 px-4 py-5 sm:px-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:px-8">
             <div className="min-w-0 space-y-5">
-              <StatsRow sim={sim} />
+              <StatsRow sim={sim} companyCreated={companyCreated} />
               <MainPanel
                 activeTab={activeTab}
                 sim={sim}
+                companyCreated={companyCreated}
                 activeProvinceId={activeProvinceId}
                 activeMunicipalityId={activeMunicipalityId}
                 province={activeProvince.name}
@@ -290,13 +307,24 @@ export function DashboardScreen() {
                 onMunicipalitySelect={selectMunicipality}
                 onShock={triggerMarketShock}
                 setSim={setSim}
+                onCreateCompany={handleCreateCompany}
               />
             </div>
 
             <aside className="space-y-5">
-              <CompanyStatus province={activeProvince.name} municipality={activeMunicipality.name} sim={sim} />
-              <RecentActivity events={events} />
-              <Objectives sim={sim} onStart={handleStart} />
+              {companyCreated ? (
+                <>
+                  <CompanyStatus province={activeProvince.name} municipality={activeMunicipality.name} sim={sim} />
+                  <RecentActivity events={events} />
+                  <Objectives sim={sim} onStart={handleStart} />
+                </>
+              ) : (
+                <CompanySetupPanel
+                  isAuthenticated={isAuthenticated}
+                  province={activeProvince.name}
+                  onCreate={handleCreateCompany}
+                />
+              )}
             </aside>
           </div>
         </section>
@@ -335,6 +363,7 @@ export function DashboardScreen() {
 function MainPanel({
   activeTab,
   sim,
+  companyCreated,
   activeProvinceId,
   activeMunicipalityId,
   province,
@@ -344,9 +373,11 @@ function MainPanel({
   onMunicipalitySelect,
   onShock,
   setSim,
+  onCreateCompany,
 }: {
   activeTab: DashboardTab;
   sim: SimulationState;
+  companyCreated: boolean;
   activeProvinceId: string;
   activeMunicipalityId: string;
   province: string;
@@ -356,6 +387,7 @@ function MainPanel({
   onMunicipalitySelect: (municipalityId: string | null) => void;
   onShock: () => void;
   setSim: React.Dispatch<React.SetStateAction<SimulationState>>;
+  onCreateCompany: () => void;
 }) {
   if (activeTab === "Mundo") {
     return (
@@ -390,6 +422,34 @@ function MainPanel({
     Eventos: <EventsTab onShock={onShock} />,
     Configurações: <SettingsTab sim={sim} setSim={setSim} />,
   };
+
+  if (!companyCreated) {
+    return (
+      <div className="min-h-[46rem] rounded-[8px] border border-white/10 bg-white/[0.025] p-5 shadow-[0_26px_80px_rgba(0,0,0,.24)]">
+        <div className="grid min-h-[42rem] place-items-center">
+          <div className="max-w-md text-center">
+            <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-sand-muted">
+              Empresa
+            </p>
+            <h1 className="mt-3 font-display text-3xl text-white">
+              Crie uma empresa para ativar esta área.
+            </h1>
+            <p className="mt-4 text-sm leading-6 text-sand-muted">
+              Finanças, operações, mercado, eventos e objetivos começam vazios
+              e passam a reagir ao motor de simulação depois da criação.
+            </p>
+            <button
+              type="button"
+              onClick={onCreateCompany}
+              className="mt-7 rounded-[8px] border border-ochre/45 bg-ochre/10 px-5 py-3 text-sm font-semibold text-sand hover:bg-ochre/15"
+            >
+              Criar empresa
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[46rem] rounded-[8px] border border-white/10 bg-white/[0.025] p-5 shadow-[0_26px_80px_rgba(0,0,0,.24)]">
@@ -458,14 +518,21 @@ function TopBar({
   );
 }
 
-function StatsRow({ sim }: { sim: SimulationState }) {
+function StatsRow({ sim, companyCreated }: { sim: SimulationState; companyCreated: boolean }) {
   const profit = sim.revenue - sim.expenses;
-  const stats = [
-    ["Saldo em Caixa", money(sim.cash), "12%"],
-    ["Receita (Hoje)", money(sim.revenue), "8%"],
-    ["Despesas (Hoje)", money(sim.expenses), "5%"],
-    ["Lucro (Hoje)", money(profit), profit >= 0 ? "18%" : "-6%"],
-  ];
+  const stats = companyCreated
+    ? [
+        ["Saldo em Caixa", money(sim.cash), "12%"],
+        ["Receita (Hoje)", money(sim.revenue), "8%"],
+        ["Despesas (Hoje)", money(sim.expenses), "5%"],
+        ["Lucro (Hoje)", money(profit), profit >= 0 ? "18%" : "-6%"],
+      ]
+    : [
+        ["Mercado", "Luanda", "Aberto"],
+        ["Demanda local", "Alta", "72%"],
+        ["Inflação setorial", "Moderada", "6,1%"],
+        ["Risco operacional", "Baixo", "18%"],
+      ];
 
   return (
     <div className="grid overflow-hidden rounded-[8px] border border-white/10 bg-white/[0.025] sm:grid-cols-2 xl:grid-cols-4">
@@ -474,8 +541,9 @@ function StatsRow({ sim }: { sim: SimulationState }) {
           <p className="text-sm text-sand-muted">{label}</p>
           <p className="mt-2 font-display text-2xl font-medium text-white">{value}</p>
           <p className={`mt-2 text-xs ${String(change).startsWith("-") ? "text-red-300" : "text-emerald-300"}`}>
-            {String(change).startsWith("-") ? "" : "+ "}
-            {change} vs. dia anterior
+            {companyCreated
+              ? `${String(change).startsWith("-") ? "" : "+ "}${change} vs. dia anterior`
+              : change}
           </p>
         </div>
       ))}
@@ -659,6 +727,36 @@ function CompanyStatus({ province, municipality, sim }: { province: string; muni
       <SideLine label="Localização" value={municipality || province} />
       <SideLine label="Capital atual" value={money(sim.cash)} />
       <Bar label="Progresso" value={12 + sim.marketShare} tone="good" />
+    </Panel>
+  );
+}
+
+function CompanySetupPanel({
+  isAuthenticated,
+  province,
+  onCreate,
+}: {
+  isAuthenticated: boolean;
+  province: string;
+  onCreate: () => void;
+}) {
+  return (
+    <Panel title="Empresa" action="Pendente">
+      <p className="text-sm leading-6 text-sand-muted">
+        Nenhuma empresa criada em {province}. Os dados operacionais aparecem
+        somente depois da criação.
+      </p>
+      <button
+        type="button"
+        onClick={onCreate}
+        className="mt-6 w-full rounded-[8px] border border-ochre/45 bg-ochre/10 px-4 py-3 text-sm font-semibold text-sand hover:bg-ochre/15"
+      >
+        {isAuthenticated ? "Criar empresa" : "Entrar para criar"}
+      </button>
+      <div className="mt-5 border-t border-white/10 pt-5">
+        <SideLine label="Localização inicial" value={province} />
+        <SideLine label="Estado" value="Aguardando criação" />
+      </div>
     </Panel>
   );
 }
