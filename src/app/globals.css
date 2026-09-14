@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+/*
+ * Sistema de design — Simulador de Negócios Angolano
+ *
+ * Paleta inspirada na luz de fim de tarde sobre a savanna e no Atlântico
+ * ao largo de Luanda: um fundo quase-preto, poeira dourada como acento
+ * principal, um vermelho-terra contido para estados de alerta/energia, e
+ * um verde-atlântico frio para elementos de água/mapa. Texto em tom areia,
+ * nunca branco puro, para manter a sensação cinematográfica.
+ */
+:root {
+  --color-void: #080a0b;
+  --color-void-elevated: #101418;
+  --color-void-line: #ffffff1a;
+
+  --color-ochre: #b8874f;
+  --color-ochre-soft: #b8874f24;
+  --color-palanca: #8f4a42;
+  --color-atlantic: #2f6f73;
+
+  --color-sand: #f2eee6;
+  --color-sand-muted: #9aa0a8;
+
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Courier New", monospace;
+}
+
+@theme inline {
+  --color-void: var(--color-void);
+  --color-void-elevated: var(--color-void-elevated);
+  --color-void-line: var(--color-void-line);
+  --color-ochre: var(--color-ochre);
+  --color-ochre-soft: var(--color-ochre-soft);
+  --color-palanca: var(--color-palanca);
+  --color-atlantic: var(--color-atlantic);
+  --color-sand: var(--color-sand);
+  --color-sand-muted: var(--color-sand-muted);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-void);
+  color: var(--color-sand);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--color-ochre-soft);
+  color: var(--color-sand);
+}
+
+/* Barra de rolagem discreta, coerente com a estética minimalista. */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-void-line);
+  border-radius: 999px;
+}
+
+/* Marcador de província no mapa placeholder (MapLibre). */
+.map-province-marker {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-ochre);
+  box-shadow: 0 0 0 4px var(--color-ochre-soft);
+  cursor: pointer;
+}
+
+/* Discrição visual dos controles nativos do MapLibre, para combinar com o
+   tema escuro/minimalista do resto da interface. */
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-bottom-right .maplibregl-ctrl {
+  background: color-mix(in srgb, var(--color-void) 88%, transparent);
+  color: var(--color-sand-muted);
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--color-sand-muted);
+}
+.maplibregl-canvas {
+  outline: none;
+}
+.maplibregl-ctrl-group {
+  overflow: hidden;
+  border: 1px solid var(--color-void-line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-void) 82%, transparent);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.015) inset;
+}
+.maplibregl-ctrl-group button {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  color: var(--color-sand-muted);
+}
+.maplibregl-ctrl-group button:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-sand);
+}
+.province-popup .maplibregl-popup-content {
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--color-void-line);
+  border-radius: 8px;
+  background: rgba(8, 10, 11, 0.9);
+  color: var(--color-sand);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
+}
+.province-popup .maplibregl-popup-tip {
+  border-top-color: rgba(10, 12, 14, 0.82);
+  border-bottom-color: rgba(10, 12, 14, 0.82);
+}
+.province-popup__label {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--color-sand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
