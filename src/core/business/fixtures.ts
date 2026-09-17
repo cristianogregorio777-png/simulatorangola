@@ -7,6 +7,7 @@ export function createTestRetailBusiness(zoneId: string): BusinessUnitState {
     name: "Mercearia Kilamba (teste)",
     zoneId,
     category: "retail",
+    targetAudience: "mid",
     cashAoa: 2_840_000,
     unitPriceAoa: 4_500,
     stockUnits: 420,

@@ -12,6 +12,7 @@ import "@fontsource/manrope/600.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "./globals.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { AppStateProvider } from "@/components/providers/AppStateProvider";
 import { SimulationProvider } from "@/components/providers/SimulationProvider";
 

@@ -108,6 +108,14 @@ export function runPhase3SimulationTick(state: SimulationState): TickResult {
       : business,
   );
 
+  if (primarySnapshot && primarySnapshot.unitsSold > 0) {
+    emittedEvents.push({
+      type: "BUSINESS_SALES",
+      tick: advancedClock.tick,
+      message: `Vendas do dia concluídas: +${primarySnapshot.grossRevenueAoa.toLocaleString("pt-AO")} Kz (${primarySnapshot.unitsSold} clientes atendidos).`,
+    });
+  }
+
   emittedEvents.push({
     type: "TICK_COMPLETED",
     tick: advancedClock.tick,

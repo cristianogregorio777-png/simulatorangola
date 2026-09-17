@@ -9,6 +9,7 @@ import {
   MAP_MAX_ZOOM,
   MAP_MIN_ZOOM,
   MAP_STYLE,
+  LOCAL_MAP_STYLE,
   PROVINCE_FOCUS_ZOOM,
 } from "@/lib/map/config";
 import { WORLD_OVERVIEW_CENTER, WORLD_PROVINCES } from "@/data/world-map.mock";
@@ -19,6 +20,8 @@ interface MapViewProps {
   activeMunicipalityId: string | null;
   onProvinceSelect: (provinceId: string) => void;
   onMunicipalitySelect: (municipalityId: string | null) => void;
+  markerCoordinates?: { lat: number; lng: number } | null;
+  markerLabel?: string;
 }
 
 type ProvinceFeatureProperties = {
@@ -154,6 +157,8 @@ export function MapView({
   activeMunicipalityId,
   onProvinceSelect,
   onMunicipalitySelect,
+  markerCoordinates = null,
+  markerLabel,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -194,6 +199,15 @@ export function MapView({
 
     map.scrollZoom.enable();
     map.touchZoomRotate.disableRotation();
+    let fallbackStyleApplied = false;
+    map.on("error", (event) => {
+      if (fallbackStyleApplied || MAP_STYLE === LOCAL_MAP_STYLE) return;
+      const message = event.error?.message ?? "";
+      if (/style|source|tile|401|403|404/i.test(message)) {
+        fallbackStyleApplied = true;
+        map.setStyle(LOCAL_MAP_STYLE);
+      }
+    });
 
     let resizeFrame = window.requestAnimationFrame(() => map.resize());
     const resizeObserver = new ResizeObserver(() => {
@@ -264,6 +278,14 @@ export function MapView({
         type: "geojson",
         data: PROVINCE_COLLECTION,
       });
+
+      if (markerCoordinates) {
+        const marker = new maplibregl.Marker({ color: "#f2b35f" })
+          .setLngLat([markerCoordinates.lng, markerCoordinates.lat])
+          .setPopup(markerLabel ? new maplibregl.Popup({ offset: 18 }).setText(markerLabel) : undefined)
+          .addTo(map);
+        map.once("remove", () => marker.remove());
+      }
 
       map.addSource(MUNICIPALITY_SOURCE_ID, {
         type: "geojson",
@@ -569,7 +591,7 @@ export function MapView({
       hoveredProvinceIdRef.current = null;
       hoveredMunicipalityIdRef.current = null;
     };
-  }, []);
+  }, [activeMunicipalityId, activeProvinceId, markerCoordinates, markerLabel]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -658,7 +680,7 @@ export function MapView({
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 bg-[#101820]"
+      className="absolute inset-0 h-full min-h-[400px] w-full bg-[#101820]"
       aria-label="Mapa interativo de Angola com seis províncias disponíveis"
     />
   );

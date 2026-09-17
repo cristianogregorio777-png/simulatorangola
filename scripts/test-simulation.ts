@@ -22,6 +22,7 @@ const notableEvents: SimulationEventPayload[] = [];
 const engine = new SimulationEngine({
   seed: 20260917,
   selectedZoneId: ZONE_ID,
+  includeTestBusiness: true,
   onEvent: (payload) => {
     if (payload.type !== "TICK_COMPLETED") {
       notableEvents.push(payload);

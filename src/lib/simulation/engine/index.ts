@@ -12,6 +12,7 @@ import {
 import { runSimulationTick } from "./tick";
 import { BaseSimulationAgent, applyAgentModifiers } from "./agents";
 import { formatSimulationDate } from "./clock";
+import type { CreateBusinessInput } from "@/types/simulation";
 import {
   appendAutomaticDecisions,
   applyAutoPilotDecision,
@@ -69,6 +70,31 @@ export class SimulationEngine {
       activeEvents: payload.activeEvents ?? this.state.activeEvents,
       history: payload.history ?? this.state.history,
     };
+  }
+
+  createBusiness(input: CreateBusinessInput): boolean {
+    if (this.state.businesses.length > 0) return false;
+    const capitalAoa = Math.max(1, Math.round(input.capitalAoa));
+    const variableCostPerUnitAoa = Math.max(350, Math.round(capitalAoa * 0.006));
+    const stockUnits = Math.max(12, Math.floor(capitalAoa * 0.35 / variableCostPerUnitAoa));
+    const margin = input.targetAudience === "premium" ? 1.65 : input.targetAudience === "economic" ? 1.25 : 1.45;
+    const business = {
+      id: `biz-${this.state.seed}-${this.state.clock.tick}`,
+      name: input.name.trim(),
+      zoneId: input.zoneId,
+      category: input.category,
+      targetAudience: input.targetAudience,
+      cashAoa: capitalAoa,
+      unitPriceAoa: Math.round(variableCostPerUnitAoa * margin),
+      stockUnits,
+      employees: 1,
+      reputation: 50,
+      variableCostPerUnitAoa,
+      fixedCostDailyAoa: Math.max(3_000, Math.round(capitalAoa * 0.012)),
+      priceElasticity: input.targetAudience === "premium" ? 0.8 : input.targetAudience === "economic" ? 1.35 : 1.05,
+    };
+    this.state = { ...this.state, businesses: [business], selectedZoneId: input.zoneId };
+    return true;
   }
 
   registerAgent(agentId: string): BaseSimulationAgent {

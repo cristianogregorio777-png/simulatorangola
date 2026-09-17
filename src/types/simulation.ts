@@ -43,7 +43,8 @@ export type SimulationEventType =
   | "HEAVY_RAIN_LOGISTICS"
   | "FOREX_SCARCITY"
   | "CUSTOMS_PORT_DELAY"
-  | "AGENT_DECISION";
+  | "AGENT_DECISION"
+  | "BUSINESS_SALES";
 
 /** Instância de evento activo ou histórico dentro do estado. */
 export interface SimulationEventInstance {
@@ -124,6 +125,7 @@ export interface BusinessUnitState {
   name: string;
   zoneId: string;
   category: BusinessCategory;
+  targetAudience: "economic" | "mid" | "premium";
   cashAoa: number;
   unitPriceAoa: number;
   stockUnits: number;
@@ -133,6 +135,14 @@ export interface BusinessUnitState {
   fixedCostDailyAoa: number;
   priceElasticity: number;
   lastTick?: BusinessTickSnapshot;
+}
+
+export interface CreateBusinessInput {
+  name: string;
+  category: BusinessCategory;
+  capitalAoa: number;
+  zoneId: string;
+  targetAudience: "economic" | "mid" | "premium";
 }
 
 /** Registo imutável de um dia processado, usado pelo calendário e relatórios. */

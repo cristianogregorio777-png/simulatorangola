@@ -30,6 +30,7 @@ console.log("Pré-voo: agentes com API simulada indisponível → fallback deter
 const preState = new SimulationEngine({
   seed: 20260917,
   selectedZoneId: ZONE_ID,
+  includeTestBusiness: true,
 }).getState();
 
 const fallbackProbe = await runAllAgentsWithAiOrFallback(preState, failingComplete);
@@ -48,6 +49,7 @@ const agentDecisions: SimulationEventPayload[] = [];
 const engine = new SimulationEngine({
   seed: 20260917,
   selectedZoneId: ZONE_ID,
+  includeTestBusiness: true,
   onEvent: (payload) => {
     if (payload.type === "AGENT_DECISION") {
       agentDecisions.push(payload);

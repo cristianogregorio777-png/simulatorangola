@@ -11,7 +11,7 @@ import {
 } from "react";
 import { useAppState } from "@/components/providers/AppStateProvider";
 import { SimulationEngine } from "@/lib/simulation/engine";
-import type { SimulationEventPayload, SimulationState } from "@/types/simulation";
+import type { CreateBusinessInput, SimulationEventPayload, SimulationState } from "@/types/simulation";
 import { supabase } from "@/lib/supabase/client";
 
 export interface SkipSummary {
@@ -44,6 +44,7 @@ interface SimulationContextValue {
   skipProgress: number;
   skipSummary: SkipSummary | null;
   dismissSkipSummary: () => void;
+  createBusiness: (input: CreateBusinessInput) => boolean;
 }
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
@@ -182,6 +183,15 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
   const dismissSkipSummary = useCallback(() => setSkipSummary(null), []);
 
+  const createBusiness = useCallback(
+    (input: CreateBusinessInput) => {
+      const created = engine.createBusiness(input);
+      if (created) commit();
+      return created;
+    },
+    [commit, engine],
+  );
+
   useEffect(() => {
     engine.setSelectedZone(selectedBusinessLocation?.locationId ?? "zone-talatona");
   }, [engine, selectedBusinessLocation?.locationId]);
@@ -282,8 +292,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       skipProgress,
       skipSummary,
       dismissSkipSummary,
+      createBusiness,
     }),
-    [advanceDay, buyGeneratorFuel, changeEmployees, dismissSkipSummary, events, isSkipping, purchaseStock, setBusinessPrice, setSpeed, skipDays, skipProgress, skipSummary, skipToDate, state, tick],
+    [advanceDay, buyGeneratorFuel, changeEmployees, createBusiness, dismissSkipSummary, events, isSkipping, purchaseStock, setBusinessPrice, setSpeed, skipDays, skipProgress, skipSummary, skipToDate, state, tick],
   );
 
   return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>;

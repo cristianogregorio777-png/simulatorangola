@@ -18,9 +18,7 @@ export function createInitialSimulationState(
   const zoneId = options.selectedZoneId ?? "zone-talatona";
   const businesses =
     options.businesses ??
-    (options.includeTestBusiness === false
-      ? []
-      : [createTestRetailBusiness(zoneId)]);
+    (options.includeTestBusiness ? [createTestRetailBusiness(zoneId)] : []);
 
   return {
     clock: createInitialClock(options.startYear ?? 2026),

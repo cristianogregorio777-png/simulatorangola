@@ -57,13 +57,22 @@ export function runBusinessFinancialTick(input: BusinessTickInput): BusinessTick
   const importPremium = 1 + macro.forexScarcityIndex * 0.08 + macro.customsDelayDays * 0.004;
   const variableCostsAoa = sold * business.variableCostPerUnitAoa * importPremium;
 
+  const scaledLocalCost = Math.min(
+    localCost.totalDailyCostAoa,
+    Math.max(3_000, business.cashAoa * 0.012),
+  );
   const energyCost =
-    localCost.totalDailyCostAoa * 0.22 * macro.generatorFuelCostMultiplier;
-  const rentAndPayroll = business.fixedCostDailyAoa * 0.72;
+    scaledLocalCost * 0.18 * macro.generatorFuelCostMultiplier;
+  const rentAndPayroll = business.fixedCostDailyAoa * 0.62;
+  const localWasteAndTradeFee = Math.max(500, scaledLocalCost * 0.06);
   const taxBurden =
-    business.fixedCostDailyAoa * 0.15 * (1.4 - macro.taxComplianceRate);
+    (business.fixedCostDailyAoa + grossRevenueAoa * 0.025) *
+    0.15 *
+    (1.4 - macro.taxComplianceRate);
 
-  const fixedCostsAoa = Math.round(rentAndPayroll + energyCost + taxBurden);
+  const fixedCostsAoa = Math.round(
+    rentAndPayroll + energyCost + localWasteAndTradeFee + taxBurden,
+  );
   const netProfitAoa = Math.round(grossRevenueAoa - variableCostsAoa - fixedCostsAoa);
   const cashAoa = business.cashAoa + netProfitAoa;
 

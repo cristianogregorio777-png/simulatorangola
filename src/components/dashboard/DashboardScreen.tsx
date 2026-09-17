@@ -8,6 +8,7 @@ import { useAppState } from "@/components/providers/AppStateProvider";
 import { useSimulation } from "@/components/providers/SimulationProvider";
 import { CareerCalendar } from "@/components/simulation/CareerCalendar";
 import { SkipSummaryModal } from "@/components/simulation/SkipSummaryModal";
+import { BusinessOnboarding } from "@/components/simulation/BusinessOnboarding";
 import type { SimulationEventPayload } from "@/types/simulation";
 import { MOCK_MUNICIPALITIES } from "@/data/municipalities.mock";
 import { MOCK_PROVINCES } from "@/data/provinces.mock";
@@ -79,11 +80,10 @@ const provinceImages: Record<string, string> = {
 
 export function DashboardScreen() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<DashboardTab>("Mundo");
+  const [activeTab, setActiveTab] = useState<DashboardTab>("Empresa");
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("sign-in");
   const [continueAfterLogin, setContinueAfterLogin] = useState(false);
-  const [companyCreated, setCompanyCreated] = useState(false);
   const {
     state: simulationState,
     events: simulationEvents,
@@ -100,21 +100,21 @@ export function DashboardScreen() {
     skipProgress,
     skipSummary,
     dismissSkipSummary,
+    createBusiness,
   } = useSimulation();
 
   const {
     selectedProvinceId,
     selectedMunicipalityId,
-    selectedBusinessLocation,
     userEmail,
     selectProvince,
     selectMunicipality,
-    confirmLocation,
     refreshSession,
   } = useAppState();
 
   const isAuthenticated = Boolean(userEmail);
   const business = simulationState.businesses[0];
+  const companyCreated = Boolean(business);
   const snapshot = business?.lastTick;
   const sim = useMemo<SimulationState>(() => ({
     day: simulationState.clock.day,
@@ -135,7 +135,10 @@ export function DashboardScreen() {
     generatorFuel: simulationState.macro.generatorFuelCostMultiplier,
     taxCompliance: simulationState.macro.taxComplianceRate,
   }), [business, simulationState.activeEvents.length, simulationState.clock.day, simulationState.clock.speed, simulationState.clock.tick, simulationState.economy.exchangeRateUsdAoa, simulationState.economy.inflation, simulationState.macro.customsDelayDays, simulationState.macro.generatorFuelCostMultiplier, simulationState.macro.taxComplianceRate, snapshot]);
-  const events = useMemo(() => simulationEvents.map(toActivityEvent), [simulationEvents]);
+  const events = useMemo(
+    () => simulationEvents.map(toActivityEvent).filter((event): event is NonNullable<ReturnType<typeof toActivityEvent>> => Boolean(event)),
+    [simulationEvents],
+  );
   const activeProvinceId = selectedProvinceId ?? "prov-luanda";
   const activeMunicipalityId = selectedMunicipalityId ?? "mun-luanda";
   const activeProvince =
@@ -167,9 +170,6 @@ export function DashboardScreen() {
       setShowAuth(true);
       return;
     }
-
-    if (!selectedBusinessLocation) confirmLocation();
-    setCompanyCreated(true);
     setActiveTab("Empresa");
   };
 
@@ -294,6 +294,7 @@ export function DashboardScreen() {
                 activeMunicipalityId={activeMunicipalityId}
                 province={activeProvince.name}
                 municipality={activeMunicipality.name}
+                locationCoordinates={activeMunicipality.coordinates}
                 playableProvinces={playableProvinces as typeof MOCK_PROVINCES}
                 onProvinceSelect={handleProvinceSelect}
                 onMunicipalitySelect={selectMunicipality}
@@ -304,7 +305,7 @@ export function DashboardScreen() {
                 onChangeEmployees={changeEmployees}
                 onBuyGeneratorFuel={buyGeneratorFuel}
                 simulationEvents={simulationEvents}
-                onCreateCompany={handleCreateCompany}
+                onCreateBusiness={createBusiness}
               />
             </div>
 
@@ -366,6 +367,7 @@ function MainPanel({
   activeMunicipalityId,
   province,
   municipality,
+  locationCoordinates,
   playableProvinces,
   onProvinceSelect,
   onMunicipalitySelect,
@@ -376,7 +378,7 @@ function MainPanel({
   onChangeEmployees,
   onBuyGeneratorFuel,
   simulationEvents,
-  onCreateCompany,
+  onCreateBusiness,
 }: {
   activeTab: DashboardTab;
   sim: SimulationState;
@@ -385,6 +387,7 @@ function MainPanel({
   activeMunicipalityId: string;
   province: string;
   municipality: string;
+  locationCoordinates: { lat: number; lng: number };
   playableProvinces: typeof MOCK_PROVINCES;
   onProvinceSelect: (provinceId: string) => void;
   onMunicipalitySelect: (municipalityId: string | null) => void;
@@ -395,7 +398,7 @@ function MainPanel({
   onChangeEmployees: (delta: number) => void;
   onBuyGeneratorFuel: (amount: number) => void;
   simulationEvents: SimulationEventPayload[];
-  onCreateCompany: () => void;
+  onCreateBusiness: (input: import("@/types/simulation").CreateBusinessInput) => boolean;
 }) {
   if (activeTab === "Mundo") {
     return (
@@ -423,7 +426,7 @@ function MainPanel({
   }
 
   const panelMap: Record<Exclude<DashboardTab, "Mundo">, React.ReactNode> = {
-    Empresa: <CompanyTab sim={sim} />,
+    Empresa: <CompanyTab sim={sim} locationCoordinates={locationCoordinates} municipality={municipality} />,
     Finanças: <FinanceTab sim={sim} />,
     Operações: <OperationsTab sim={sim} onSetPrice={onSetPrice} onPurchaseStock={onPurchaseStock} onChangeEmployees={onChangeEmployees} onBuyGeneratorFuel={onBuyGeneratorFuel} />,
     Mercado: <MarketTab sim={sim} onShock={onShock} />,
@@ -433,29 +436,7 @@ function MainPanel({
 
   if (!companyCreated) {
     return (
-      <div className="min-h-[46rem] rounded-[8px] border border-white/10 bg-white/[0.025] p-5 shadow-[0_26px_80px_rgba(0,0,0,.24)]">
-        <div className="grid min-h-[42rem] place-items-center">
-          <div className="max-w-md text-center">
-            <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-sand-muted">
-              Empresa
-            </p>
-            <h1 className="mt-3 font-display text-3xl text-white">
-              Crie uma empresa para ativar esta área.
-            </h1>
-            <p className="mt-4 text-sm leading-6 text-sand-muted">
-              Finanças, operações, mercado, eventos e objetivos começam vazios
-              e passam a reagir ao motor de simulação depois da criação.
-            </p>
-            <button
-              type="button"
-              onClick={onCreateCompany}
-              className="mt-7 rounded-[8px] border border-ochre/45 bg-ochre/10 px-5 py-3 text-sm font-semibold text-sand hover:bg-ochre/15"
-            >
-              Criar empresa
-            </button>
-          </div>
-        </div>
-      </div>
+      <BusinessOnboarding selectedProvinceId={activeProvinceId} selectedMunicipalityId={activeMunicipalityId} onCreate={onCreateBusiness} />
     );
   }
 
@@ -559,7 +540,7 @@ function StatsRow({ sim, companyCreated }: { sim: SimulationState; companyCreate
   );
 }
 
-function CompanyTab({ sim }: { sim: SimulationState }) {
+function CompanyTab({ sim, locationCoordinates, municipality }: { sim: SimulationState; locationCoordinates: { lat: number; lng: number }; municipality: string }) {
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_1.2fr]">
       <MetricGrid
@@ -583,6 +564,16 @@ function CompanyTab({ sim }: { sim: SimulationState }) {
           </div>
         ))}
       </GlassPanel>
+      <div className="min-h-[400px] overflow-hidden rounded-[8px] border border-white/10 lg:col-span-2">
+        <MapView
+          activeProvinceId={null}
+          activeMunicipalityId={null}
+          onProvinceSelect={() => undefined}
+          onMunicipalitySelect={() => undefined}
+          markerCoordinates={locationCoordinates}
+          markerLabel={`Empresa · ${municipality}`}
+        />
+      </div>
     </div>
   );
 }
@@ -788,11 +779,29 @@ function CompanySetupPanel({
 }
 
 function toActivityEvent(event: SimulationEventPayload) {
+  const narrative = event.type === "HEAVY_RAIN_LOGISTICS"
+    ? "Chuvas intensas podem atrasar entregas na zona escolhida."
+    : event.type === "FOREX_SCARCITY"
+      ? "Escassez de divisas encareceu as compras de stock."
+      : event.type === "CUSTOMS_PORT_DELAY"
+        ? "Atraso no porto aumentou o prazo de reposição do stock."
+        : event.type === "POWER_OUTAGE_EVENT"
+          ? `Corte de energia${event.zoneId ? ` na zona ${event.zoneId}` : " na operação"}; custos de gerador podem subir.`
+          : event.type === "CURRENCY_DEVALUATION"
+            ? "O kwanza perdeu valor face ao USD e os custos de importação subiram."
+            : event.type === "INFLATION_SPIKE"
+              ? "A inflação aumentou e pressionou os preços de compra."
+              : event.type === "SUBSIDY_CUT"
+                ? "A retirada de subsídios elevou os custos logísticos."
+                : event.type === "BUSINESS_SALES"
+                  ? event.message ?? "Vendas do dia concluídas."
+                : null;
+  if (!narrative) return null;
   return {
-    title: event.type,
-    detail: event.message ?? "Evento processado pelo motor.",
+    title: "Alerta de negócio",
+    detail: narrative,
     time: `Tick ${event.tick}`,
-    tone: event.type === "TICK_COMPLETED" ? "good" : "bad",
+    tone: "bad",
   };
 }
 
