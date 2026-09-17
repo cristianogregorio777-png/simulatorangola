@@ -4,6 +4,3 @@ publish = ".next"
 
 [build.environment]
 NODE_VERSION = "22"
-NEXT_PUBLIC_MAPTILER_KEY = "s48e6psOlfWKJb7vI1DL"
-NEXT_PUBLIC_SUPABASE_URL = "https://hkzholsebprnfenkebss.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_mDdNILuaZ1s0Fzqp09GOag_CFLQSIBI"

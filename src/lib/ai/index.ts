@@ -6,10 +6,8 @@ import { groqProvider } from "@/lib/ai/providers/groq";
 /**
  * Registro central de providers de IA.
  *
- * Futuramente, o Event Engine e os AI Agents vão pedir um provider por id
- * (`getAiProvider("gemini")`) em vez de importar um provider específico
- * diretamente, o que permite trocar/adicionar providers sem alterar quem
- * os consome.
+ * Consumidores devem preferir `completeWithFallback()` em vez de chamar
+ * providers diretamente, para respeitar a cadeia Groq → Gemini → determinístico.
  */
 const providers: Record<AiProviderId, AiProvider> = {
   gemini: geminiProvider,
@@ -20,5 +18,6 @@ export function getAiProvider(id: AiProviderId): AiProvider {
   return providers[id];
 }
 
-export type { AiProvider, AiProviderId } from "@/lib/ai/types";
+export { completeWithFallback } from "@/lib/ai/completeWithFallback";
+export type { AiProvider, AiProviderId, AiResponseProvider } from "@/lib/ai/types";
 export type { AiCompletionRequest, AiCompletionResponse } from "@/lib/ai/types";

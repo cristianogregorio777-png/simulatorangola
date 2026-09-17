@@ -61,14 +61,19 @@ projeto.
 Veja `.env.example`. Nenhuma chave é usada diretamente no código. As
 variáveis necessárias nesta fase são:
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL` (sem `/rest/v1/`)
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SECRET_KEY` (apenas servidor)
+- `NEXT_PUBLIC_MAPTILER_API_KEY`
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+- `TURNSTILE_SECRET_KEY` (apenas servidor)
+- `GEMINI_API_KEY` (apenas servidor)
+- `GROQ_API_KEY` (apenas servidor)
 - `NEXT_PUBLIC_MAP_STYLE_URL` (opcional; o mapa tem base local sem tiles externos)
-- `GEMINI_API_KEY`
-- `GROQ_API_KEY`
 
 As chaves públicas podem ser lidas no browser. As chaves privadas só devem
-ser usadas em código de servidor.
+ser usadas em código de servidor. Configure-as no painel do Netlify/Vercel —
+nunca as commite no repositório.
 
 ## Rotas
 

@@ -28,13 +28,21 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+
+  if (pathname.startsWith("/api/ai") && !user) {
+    return NextResponse.json({ error: "Sessão necessária." }, { status: 401 });
+  }
 
   return response;
 }
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+    "/((?!api/turnstile|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
   ],
 };

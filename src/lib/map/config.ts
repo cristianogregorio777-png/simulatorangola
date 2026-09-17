@@ -29,7 +29,7 @@ export const ANGOLA_DEFAULT_ZOOM = ANGOLA_OVERVIEW_ZOOM;
  *
  * O default evita falhas de deploy/runtime causadas por tiles externos.
  * Não desenha fronteiras ou geometrias inventadas; a camada geográfica
- * real entra via MapTiler quando `NEXT_PUBLIC_MAPTILER_KEY` está definida.
+ * real entra via MapTiler quando `NEXT_PUBLIC_MAPTILER_API_KEY` está definida.
  */
 export const LOCAL_MAP_STYLE: StyleSpecification = {
   version: 8,
@@ -46,7 +46,9 @@ export const LOCAL_MAP_STYLE: StyleSpecification = {
   ],
 };
 
-export const MAPTILER_API_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
+export const MAPTILER_API_KEY =
+  process.env.NEXT_PUBLIC_MAPTILER_API_KEY ??
+  process.env.NEXT_PUBLIC_MAPTILER_KEY;
 
 export const MAPTILER_STYLE_URL = MAPTILER_API_KEY
   ? `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_API_KEY}`

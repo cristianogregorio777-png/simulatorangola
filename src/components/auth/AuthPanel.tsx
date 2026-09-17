@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import { TurnstileWidget } from "@/components/auth/TurnstileWidget";
 import type { FormEvent } from "react";
 
 type AuthMode = "sign-in" | "sign-up";
@@ -10,6 +11,31 @@ type AuthMode = "sign-in" | "sign-up";
 interface AuthPanelProps {
   initialMode?: AuthMode;
   onSuccess?: () => void;
+}
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? null;
+
+async function verifyTurnstile(token: string | null): Promise<boolean> {
+  if (!TURNSTILE_SITE_KEY) {
+    return true;
+  }
+
+  if (!token) {
+    return false;
+  }
+
+  const response = await fetch("/api/turnstile/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+
+  if (!response.ok) {
+    return false;
+  }
+
+  const data = (await response.json()) as { ok?: boolean };
+  return data.ok === true;
 }
 
 /**
@@ -27,10 +53,13 @@ export function AuthPanel({ initialMode = "sign-up", onSuccess }: AuthPanelProps
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleTurnstileToken = useCallback((token: string | null) => {
+    setTurnstileToken(token);
+  }, []);
 
+  const runAuth = async (action: () => Promise<void>) => {
     if (!supabase) {
       setError("Configura as variáveis do Supabase para usar a autenticação.");
       return;
@@ -41,12 +70,35 @@ export function AuthPanel({ initialMode = "sign-up", onSuccess }: AuthPanelProps
     setMessage(null);
 
     try {
+      const turnstileOk = await verifyTurnstile(turnstileToken);
+      if (!turnstileOk) {
+        throw new Error("Confirma a verificação de segurança antes de continuar.");
+      }
+
+      await action();
+    } catch (authError) {
+      const nextError =
+        authError instanceof Error
+          ? authError.message
+          : "Não foi possível autenticar neste momento.";
+      setError(nextError);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    await runAuth(async () => {
+      if (!supabase) return;
+
       if (mode === "sign-up") {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/simulacao`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=/simulacao`,
           },
         });
 
@@ -77,18 +129,35 @@ export function AuthPanel({ initialMode = "sign-up", onSuccess }: AuthPanelProps
       setMessage("Sessão iniciada com sucesso.");
       onSuccess?.();
       router.refresh();
-    } catch (authError) {
-      const nextError =
-        authError instanceof Error
-          ? authError.message
-          : "Não foi possível autenticar neste momento.";
-      setError(nextError);
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
-  const canSubmit = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length >= 6;
+  const canSubmit =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
+    password.length >= 6 &&
+    (!TURNSTILE_SITE_KEY || Boolean(turnstileToken));
+
+  const handleGoogleSignIn = async () => {
+    if (!supabase) {
+      setError("Supabase não está configurado.");
+      return;
+    }
+
+    await runAuth(async () => {
+      if (!supabase) return;
+
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=/simulacao`,
+        },
+      });
+
+      if (oauthError) {
+        throw oauthError;
+      }
+    });
+  };
 
   return (
     <div className="rounded-[8px] border border-white/10 bg-[#0b1116]/95 p-5 shadow-[0_28px_90px_rgba(0,0,0,.45)] backdrop-blur-xl">
@@ -109,6 +178,22 @@ export function AuthPanel({ initialMode = "sign-up", onSuccess }: AuthPanelProps
         >
           {mode === "sign-up" ? "Já tenho conta" : "Criar conta"}
         </button>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleGoogleSignIn}
+        disabled={loading || (Boolean(TURNSTILE_SITE_KEY) && !turnstileToken)}
+        className="mb-4 flex w-full items-center justify-center gap-3 rounded-[8px] border border-white/10 bg-white px-4 py-3 text-sm font-semibold text-[#101418] transition hover:bg-sand disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <span className="font-display text-base">G</span>
+        Continuar com Google
+      </button>
+
+      <div className="mb-4 flex items-center gap-3 text-xs text-sand-muted">
+        <span className="h-px flex-1 bg-white/10" />
+        ou
+        <span className="h-px flex-1 bg-white/10" />
       </div>
 
       <form className="space-y-3" onSubmit={handleSubmit}>
@@ -142,6 +227,10 @@ export function AuthPanel({ initialMode = "sign-up", onSuccess }: AuthPanelProps
             minLength={6}
           />
         </label>
+
+        {TURNSTILE_SITE_KEY ? (
+          <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onTokenChange={handleTurnstileToken} />
+        ) : null}
 
         {error ? (
           <p className="font-body text-sm text-[#f2a3a3]">{error}</p>

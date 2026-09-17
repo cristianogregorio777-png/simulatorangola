@@ -1,6 +1,10 @@
-import type { Municipality, Province } from "@/types/geo";
+import type { Commune, Municipality, Neighborhood, Province } from "@/types/geo";
 import { MOCK_PROVINCES } from "@/data/provinces.mock";
 import { MOCK_MUNICIPALITIES } from "@/data/municipalities.mock";
+import {
+  MOCK_COMMUNES,
+  MOCK_NEIGHBORHOODS,
+} from "@/data/neighborhoods.mock";
 
 /**
  * Camada de acesso a dados geográficos.
@@ -31,4 +35,26 @@ export async function getMunicipalitiesByProvince(
   return MOCK_MUNICIPALITIES.filter(
     (municipality) => municipality.provinceId === provinceId,
   );
+}
+
+export async function getCommunesByMunicipality(
+  municipalityId: string,
+): Promise<Commune[]> {
+  return MOCK_COMMUNES.filter(
+    (commune) => commune.municipalityId === municipalityId,
+  );
+}
+
+export async function getNeighborhoodsByCommune(
+  communeId: string,
+): Promise<Neighborhood[]> {
+  return MOCK_NEIGHBORHOODS.filter(
+    (neighborhood) => neighborhood.communeId === communeId,
+  );
+}
+
+export async function getNeighborhoodById(
+  zoneId: string,
+): Promise<Neighborhood | undefined> {
+  return MOCK_NEIGHBORHOODS.find((neighborhood) => neighborhood.id === zoneId);
 }

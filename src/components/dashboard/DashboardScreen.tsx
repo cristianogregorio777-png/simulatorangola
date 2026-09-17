@@ -1,10 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthPanel } from "@/components/auth/AuthPanel";
 import { useAppState } from "@/components/providers/AppStateProvider";
+import { useSimulation } from "@/components/providers/SimulationProvider";
+import { CareerCalendar } from "@/components/simulation/CareerCalendar";
+import { SkipSummaryModal } from "@/components/simulation/SkipSummaryModal";
+import type { SimulationEventPayload } from "@/types/simulation";
 import { MOCK_MUNICIPALITIES } from "@/data/municipalities.mock";
 import { MOCK_PROVINCES } from "@/data/provinces.mock";
 import { supabase } from "@/lib/supabase/client";
@@ -36,6 +40,12 @@ interface SimulationState {
   demand: number;
   eventImpact: number;
   speed: 0 | 1 | 2 | 5;
+  unitPrice: number;
+  exchangeRate: number;
+  inflation: number;
+  customsDelay: number;
+  generatorFuel: number;
+  taxCompliance: number;
 }
 
 const menuItems: Array<{ label: DashboardTab; icon: string; protected: boolean }> = [
@@ -67,20 +77,6 @@ const provinceImages: Record<string, string> = {
   "prov-namibe": "linear-gradient(135deg, rgba(140,94,63,.66), rgba(11,15,18,.42))",
 };
 
-const initialSimulation: SimulationState = {
-  day: 12,
-  hour: 10,
-  cash: 2840000,
-  revenue: 1260000,
-  expenses: 980000,
-  efficiency: 76,
-  marketShare: 8.4,
-  inventory: 68,
-  demand: 72,
-  eventImpact: 0,
-  speed: 1,
-};
-
 export function DashboardScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<DashboardTab>("Mundo");
@@ -88,13 +84,23 @@ export function DashboardScreen() {
   const [authMode, setAuthMode] = useState<AuthMode>("sign-in");
   const [continueAfterLogin, setContinueAfterLogin] = useState(false);
   const [companyCreated, setCompanyCreated] = useState(false);
-  const [sim, setSim] = useState<SimulationState>(initialSimulation);
-  const [events, setEvents] = useState([
-    { title: "Venda realizada", detail: "+125 000 Kz", time: "10:32", tone: "good" },
-    { title: "Transporte mais caro", detail: "-50 000 Kz", time: "09:14", tone: "bad" },
-    { title: "Cliente empresarial", detail: "Contrato em negociação", time: "08:45", tone: "info" },
-    { title: "Chuva prevista", detail: "Impacto logístico moderado", time: "07:20", tone: "muted" },
-  ]);
+  const {
+    state: simulationState,
+    events: simulationEvents,
+    tick,
+    setSpeed,
+    setBusinessPrice,
+    purchaseStock,
+    changeEmployees,
+    buyGeneratorFuel,
+    advanceDay,
+    skipDays,
+    skipToDate,
+    isSkipping,
+    skipProgress,
+    skipSummary,
+    dismissSkipSummary,
+  } = useSimulation();
 
   const {
     selectedProvinceId,
@@ -108,6 +114,28 @@ export function DashboardScreen() {
   } = useAppState();
 
   const isAuthenticated = Boolean(userEmail);
+  const business = simulationState.businesses[0];
+  const snapshot = business?.lastTick;
+  const sim = useMemo<SimulationState>(() => ({
+    day: simulationState.clock.day,
+    hour: simulationState.clock.tick % 24,
+    cash: business?.cashAoa ?? 0,
+    revenue: snapshot?.grossRevenueAoa ?? 0,
+    expenses: (snapshot?.variableCostsAoa ?? 0) + (snapshot?.fixedCostsAoa ?? 0),
+    efficiency: clamp((business?.employees ?? 0) * 4.2, 40, 96),
+    marketShare: clamp((snapshot?.demandIndex ?? 0) / 10, 3, 24),
+    inventory: clamp((business?.stockUnits ?? 0) / 4.2, 0, 100),
+    demand: snapshot?.demandIndex ?? 0,
+    eventImpact: clamp(simulationState.activeEvents.length * 12, 0, 100),
+    speed: simulationState.clock.speed === 3 ? 5 : simulationState.clock.speed,
+    unitPrice: business?.unitPriceAoa ?? 0,
+    exchangeRate: simulationState.economy.exchangeRateUsdAoa,
+    inflation: simulationState.economy.inflation,
+    customsDelay: simulationState.macro.customsDelayDays,
+    generatorFuel: simulationState.macro.generatorFuelCostMultiplier,
+    taxCompliance: simulationState.macro.taxComplianceRate,
+  }), [business, simulationState.activeEvents.length, simulationState.clock.day, simulationState.clock.speed, simulationState.clock.tick, simulationState.economy.exchangeRateUsdAoa, simulationState.economy.inflation, simulationState.macro.customsDelayDays, simulationState.macro.generatorFuelCostMultiplier, simulationState.macro.taxComplianceRate, snapshot]);
+  const events = useMemo(() => simulationEvents.map(toActivityEvent), [simulationEvents]);
   const activeProvinceId = selectedProvinceId ?? "prov-luanda";
   const activeMunicipalityId = selectedMunicipalityId ?? "mun-luanda";
   const activeProvince =
@@ -122,36 +150,6 @@ export function DashboardScreen() {
         .filter(Boolean),
     [],
   );
-
-  useEffect(() => {
-    if (!companyCreated || sim.speed === 0) return;
-
-    const interval = window.setInterval(() => {
-      setSim((current) => {
-        const demandLift = (current.demand - 60) * 120;
-        const efficiencyLift = (current.efficiency - 70) * 95;
-        const eventCost = current.eventImpact * 240;
-        const revenue = Math.max(0, Math.round(current.revenue + demandLift + efficiencyLift));
-        const expenses = Math.max(0, Math.round(current.expenses + eventCost + (100 - current.inventory) * 70));
-
-        return {
-          ...current,
-          day: current.day + 1,
-          hour: (current.hour + current.speed * 2) % 24,
-          cash: Math.round(current.cash + revenue - expenses),
-          revenue,
-          expenses,
-          efficiency: clamp(current.efficiency + (current.inventory > 45 ? 0.2 : -0.6), 40, 96),
-          inventory: clamp(current.inventory - current.demand * 0.025 + current.speed * 0.6, 12, 100),
-          demand: clamp(current.demand + Math.sin(current.day / 3) * 1.6 - current.eventImpact * 0.04, 35, 95),
-          marketShare: clamp(current.marketShare + (revenue > expenses ? 0.04 : -0.03), 3, 24),
-          eventImpact: Math.max(0, current.eventImpact - 0.4),
-        };
-      });
-    }, 1800 / sim.speed);
-
-    return () => window.clearInterval(interval);
-  }, [companyCreated, sim.speed]);
 
   const handleProtectedTab = (tab: DashboardTab, protectedTab: boolean) => {
     if (protectedTab && !isAuthenticated) {
@@ -204,21 +202,7 @@ export function DashboardScreen() {
   };
 
   const triggerMarketShock = () => {
-    setSim((current) => ({
-      ...current,
-      eventImpact: clamp(current.eventImpact + 18, 0, 100),
-      expenses: current.expenses + 65000,
-      demand: clamp(current.demand - 5, 35, 95),
-    }));
-    setEvents((current) => [
-      {
-        title: "Pressão nos custos",
-        detail: "Margem reduzida nas próximas rodadas",
-        time: `${String(sim.hour).padStart(2, "0")}:00`,
-        tone: "bad",
-      },
-      ...current.slice(0, 3),
-    ]);
+    tick();
   };
 
   return (
@@ -290,6 +274,14 @@ export function DashboardScreen() {
             }}
             onLogout={handleLogout}
           />
+          <CareerCalendar
+            state={simulationState}
+            isSkipping={isSkipping}
+            progress={skipProgress}
+            onAdvanceDay={advanceDay}
+            onSkipDays={(days) => void skipDays(days)}
+            onSkipToDate={(date) => void skipToDate(date)}
+          />
 
           <div className="grid gap-5 px-4 py-5 sm:px-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:px-8">
             <div className="min-w-0 space-y-5">
@@ -306,7 +298,12 @@ export function DashboardScreen() {
                 onProvinceSelect={handleProvinceSelect}
                 onMunicipalitySelect={selectMunicipality}
                 onShock={triggerMarketShock}
-                setSim={setSim}
+                onSetSpeed={setSpeed}
+                onSetPrice={setBusinessPrice}
+                onPurchaseStock={purchaseStock}
+                onChangeEmployees={changeEmployees}
+                onBuyGeneratorFuel={buyGeneratorFuel}
+                simulationEvents={simulationEvents}
                 onCreateCompany={handleCreateCompany}
               />
             </div>
@@ -356,6 +353,7 @@ export function DashboardScreen() {
           </div>
         </div>
       ) : null}
+      {skipSummary ? <SkipSummaryModal summary={skipSummary} onClose={dismissSkipSummary} /> : null}
     </main>
   );
 }
@@ -372,7 +370,12 @@ function MainPanel({
   onProvinceSelect,
   onMunicipalitySelect,
   onShock,
-  setSim,
+  onSetSpeed,
+  onSetPrice,
+  onPurchaseStock,
+  onChangeEmployees,
+  onBuyGeneratorFuel,
+  simulationEvents,
   onCreateCompany,
 }: {
   activeTab: DashboardTab;
@@ -386,7 +389,12 @@ function MainPanel({
   onProvinceSelect: (provinceId: string) => void;
   onMunicipalitySelect: (municipalityId: string | null) => void;
   onShock: () => void;
-  setSim: React.Dispatch<React.SetStateAction<SimulationState>>;
+  onSetSpeed: (speed: 0 | 1 | 2 | 3) => void;
+  onSetPrice: (price: number) => void;
+  onPurchaseStock: (units: number) => void;
+  onChangeEmployees: (delta: number) => void;
+  onBuyGeneratorFuel: (amount: number) => void;
+  simulationEvents: SimulationEventPayload[];
   onCreateCompany: () => void;
 }) {
   if (activeTab === "Mundo") {
@@ -417,10 +425,10 @@ function MainPanel({
   const panelMap: Record<Exclude<DashboardTab, "Mundo">, React.ReactNode> = {
     Empresa: <CompanyTab sim={sim} />,
     Finanças: <FinanceTab sim={sim} />,
-    Operações: <OperationsTab sim={sim} setSim={setSim} />,
+    Operações: <OperationsTab sim={sim} onSetPrice={onSetPrice} onPurchaseStock={onPurchaseStock} onChangeEmployees={onChangeEmployees} onBuyGeneratorFuel={onBuyGeneratorFuel} />,
     Mercado: <MarketTab sim={sim} onShock={onShock} />,
-    Eventos: <EventsTab onShock={onShock} />,
-    Configurações: <SettingsTab sim={sim} setSim={setSim} />,
+    Eventos: <EventsTab events={simulationEvents} onShock={onShock} />,
+    Configurações: <SettingsTab sim={sim} onSetSpeed={onSetSpeed} />,
   };
 
   if (!companyCreated) {
@@ -587,11 +595,15 @@ function FinanceTab({ sim }: { sim: SimulationState }) {
       <GlassPanel title="Fluxo de caixa">
         <MiniLineChart points={points} />
       </GlassPanel>
-      <GlassPanel title="Alocação de capital">
-        <SideLine label="Operação" value="42%" />
-        <SideLine label="Marketing" value="24%" />
-        <SideLine label="Reserva" value="21%" />
-        <SideLine label="Expansão" value="13%" />
+      <GlassPanel title="DRE e contexto angolano">
+        <SideLine label="Receita bruta" value={money(sim.revenue)} />
+        <SideLine label="Custos variáveis" value={money(sim.expenses * 0.62)} />
+        <SideLine label="Custos fixos / AGT" value={money(sim.expenses * 0.38)} />
+        <SideLine label="USD / AOA" value={sim.exchangeRate.toFixed(2)} />
+        <SideLine label="Inflação" value={`${(sim.inflation * 100).toFixed(2)}%`} />
+        <SideLine label="Alfândega / porto" value={`${sim.customsDelay.toFixed(1)} dias`} />
+        <SideLine label="Combustível gerador" value={`${sim.generatorFuel.toFixed(2)}x`} />
+        <SideLine label="Conformidade AGT" value={`${(sim.taxCompliance * 100).toFixed(0)}%`} />
       </GlassPanel>
     </div>
   );
@@ -599,17 +611,31 @@ function FinanceTab({ sim }: { sim: SimulationState }) {
 
 function OperationsTab({
   sim,
-  setSim,
+  onSetPrice,
+  onPurchaseStock,
+  onChangeEmployees,
+  onBuyGeneratorFuel,
 }: {
   sim: SimulationState;
-  setSim: React.Dispatch<React.SetStateAction<SimulationState>>;
+  onSetPrice: (price: number) => void;
+  onPurchaseStock: (units: number) => void;
+  onChangeEmployees: (delta: number) => void;
+  onBuyGeneratorFuel: (amount: number) => void;
 }) {
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
       <GlassPanel title="Pipeline operacional">
-        <Slider label="Capacidade" value={sim.efficiency} onChange={(value) => setSim((current) => ({ ...current, efficiency: value }))} />
-        <Slider label="Estoque" value={sim.inventory} onChange={(value) => setSim((current) => ({ ...current, inventory: value }))} />
-        <Slider label="Demanda" value={sim.demand} onChange={(value) => setSim((current) => ({ ...current, demand: value }))} />
+        <Slider label="Preço de venda (Kz)" value={sim.unitPrice} min={3500} max={12000} onChange={onSetPrice} />
+        <button type="button" onClick={() => onPurchaseStock(100)} className="mt-4 w-full rounded-[8px] border border-ochre/40 bg-ochre/10 px-4 py-3 text-sm text-sand hover:bg-ochre/15">
+          Comprar 100 unidades de stock
+        </button>
+        <button type="button" onClick={() => onBuyGeneratorFuel(5)} className="mt-3 w-full rounded-[8px] border border-white/10 px-4 py-3 text-sm text-sand-muted hover:bg-white/[0.04]">
+          Abastecer gerador
+        </button>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <button type="button" onClick={() => onChangeEmployees(1)} className="rounded-[8px] border border-white/10 px-3 py-3 text-sm text-sand hover:bg-white/[0.04]">Contratar</button>
+          <button type="button" onClick={() => onChangeEmployees(-1)} className="rounded-[8px] border border-white/10 px-3 py-3 text-sm text-sand hover:bg-white/[0.04]">Demitir</button>
+        </div>
       </GlassPanel>
       <GlassPanel title="Gargalos">
         <Bar label="Fornecimento" value={100 - sim.inventory} tone="bad" />
@@ -644,13 +670,13 @@ function MarketTab({ sim, onShock }: { sim: SimulationState; onShock: () => void
   );
 }
 
-function EventsTab({ onShock }: { onShock: () => void }) {
+function EventsTab({ events, onShock }: { events: SimulationEventPayload[]; onShock: () => void }) {
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
       <GlassPanel title="Alertas ativos">
-        <EventRow title="Custos logísticos em alta" impact="Negativo" time="2 dias" />
-        <EventRow title="Demanda urbana aquecida" impact="Positivo" time="5 dias" />
-        <EventRow title="Pressão cambial" impact="Crítico" time="8 dias" />
+        {events.length === 0 ? <p className="text-sm text-sand-muted">Nenhum evento emitido ainda.</p> : events.slice(0, 5).map((event) => (
+          <EventRow key={`${event.type}-${event.tick}`} title={event.type} impact="Activo" time={`Tick ${event.tick}`} />
+        ))}
       </GlassPanel>
       <GlassPanel title="Motor causal">
         <p className="mb-5 text-sm leading-6 text-sand-muted">
@@ -666,20 +692,20 @@ function EventsTab({ onShock }: { onShock: () => void }) {
 
 function SettingsTab({
   sim,
-  setSim,
+  onSetSpeed,
 }: {
   sim: SimulationState;
-  setSim: React.Dispatch<React.SetStateAction<SimulationState>>;
+  onSetSpeed: (speed: 0 | 1 | 2 | 3) => void;
 }) {
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
       <GlassPanel title="Velocidade da simulação">
         <div className="grid grid-cols-4 gap-2">
-          {[0, 1, 2, 5].map((speed) => (
+          {[0, 1, 2, 3].map((speed) => (
             <button
               key={speed}
               type="button"
-              onClick={() => setSim((current) => ({ ...current, speed: speed as SimulationState["speed"] }))}
+              onClick={() => onSetSpeed(speed as 0 | 1 | 2 | 3)}
               className={`rounded-[8px] border px-3 py-3 text-sm ${
                 sim.speed === speed ? "border-ochre bg-ochre/10 text-white" : "border-white/10 text-sand-muted"
               }`}
@@ -759,6 +785,15 @@ function CompanySetupPanel({
       </div>
     </Panel>
   );
+}
+
+function toActivityEvent(event: SimulationEventPayload) {
+  return {
+    title: event.type,
+    detail: event.message ?? "Evento processado pelo motor.",
+    time: `Tick ${event.tick}`,
+    tone: event.type === "TICK_COMPLETED" ? "good" : "bad",
+  };
 }
 
 function RecentActivity({ events }: { events: Array<{ title: string; detail: string; time: string; tone: string }> }) {
@@ -883,17 +918,17 @@ function MiniLineChart({ points }: { points: number[] }) {
   );
 }
 
-function Slider({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+function Slider({ label, value, min = 0, max = 100, onChange }: { label: string; value: number; min?: number; max?: number; onChange: (value: number) => void }) {
   return (
     <label className="mb-5 block">
       <div className="mb-2 flex justify-between text-sm">
         <span className="text-sand">{label}</span>
-        <span className="text-sand-muted">{Math.round(value)}%</span>
+        <span className="text-sand-muted">{max > 100 ? `${Math.round(value).toLocaleString("pt-AO")} Kz` : `${Math.round(value)}%`}</span>
       </div>
       <input
         type="range"
-        min="0"
-        max="100"
+        min={min}
+        max={max}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
         className="w-full accent-ochre"

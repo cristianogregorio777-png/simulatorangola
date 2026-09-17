@@ -1,20 +1,10 @@
 import type { WorldState } from "@/types/simulation";
+import { createInitialSimulationState, toWorldState } from "@/lib/simulation/engine";
 
 /**
- * Estado inicial do "mundo" usado apenas para popular a World Screen
- * nesta fase. O Simulation Engine real (relógio avançando, economia
- * dinâmica, etc.) será construído em uma fase futura.
+ * Estado inicial do "mundo" para a World Screen.
+ * Derivado do Simulation Engine para manter valores macro consistentes.
  */
-export const INITIAL_WORLD_STATE: WorldState = {
-  clock: {
-    day: 1,
-    year: 2026,
-    speed: 0,
-  },
-  economy: {
-    inflation: 0,
-    gdpGrowth: 0,
-    exchangeRateUsdAoa: 0,
-  },
-  selectedProvinceId: null,
-};
+export const INITIAL_WORLD_STATE: WorldState = toWorldState(
+  createInitialSimulationState(),
+);

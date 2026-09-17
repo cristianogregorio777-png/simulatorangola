@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { getAiProvider, type AiProviderId } from "@/lib/ai";
+import { completeWithFallback } from "@/lib/ai";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { AiProviderId } from "@/lib/ai/types";
 
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
@@ -21,28 +22,29 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as {
-    provider?: AiProviderId;
     prompt?: string;
     context?: Record<string, unknown>;
   };
 
-  const providerId = body.provider ?? "groq";
   const prompt =
     body.prompt ??
     "Gera uma recomendação operacional curta para o negócio desta localização.";
-  const provider = getAiProvider(providerId);
-  const result = await provider.complete({
+
+  const result = await completeWithFallback({
     prompt,
     context: body.context,
   });
 
-  await supabase.from("ai_events").insert({
-    user_id: user.id,
-    provider: result.provider,
-    prompt,
-    response: result.text,
-    context: body.context ?? {},
-  });
+  if (result.provider === "groq" || result.provider === "gemini") {
+    const provider: AiProviderId = result.provider;
+    await supabase.from("ai_events").insert({
+      user_id: user.id,
+      provider,
+      prompt,
+      response: result.text,
+      context: body.context ?? {},
+    });
+  }
 
   return NextResponse.json(result);
 }

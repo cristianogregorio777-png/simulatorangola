@@ -35,6 +35,12 @@ interface GeoEntityBase {
   detailLevel: DetailLevel;
 }
 
+/** País — raiz da hierarquia territorial. */
+export interface Country extends GeoEntityBase {
+  type: "country";
+  isoCode: "AO";
+}
+
 /** Província de Angola (18 no total). */
 export interface Province extends GeoEntityBase {
   type: "province";
@@ -59,12 +65,48 @@ export interface District extends GeoEntityBase {
   communeId: string;
 }
 
+/** Índice composto de qualidade de infraestrutura local (0–100). */
+export interface InfrastructureQualityIndex {
+  /** Estabilidade do fornecimento eléctrico. */
+  powerStability: number;
+  /** Abastecimento de água potável e saneamento. */
+  waterSupply: number;
+  /** Conectividade móvel/fibra e qualidade de internet. */
+  connectivity: number;
+  /** Estado das vias e facilidade logística. */
+  roadsLogistics: number;
+}
+
+/** Perfil de consumo estimado para uma zona. */
+export interface ConsumptionProfile {
+  /** Proporção de consumo premium/lifestyle (0–1). */
+  premiumShare: number;
+  /** Proporção de bens e serviços essenciais (0–1). */
+  essentialShare: number;
+  /** Preferência por mercado informal vs. formal (0–1). */
+  informalPreference: number;
+}
+
+/** Indicadores socioeconómicos regionais usados pelo World Engine. */
+export interface RegionalSocioeconomics {
+  /** Poder de compra estimado; 50 = média nacional. */
+  purchasingPowerIndex: number;
+  /** Taxa de informalidade económica local (0–1). */
+  informalEconomyRate: number;
+  /** Densidade populacional aproximada (hab./km²). */
+  populationDensity: number;
+  infrastructure: InfrastructureQualityIndex;
+  consumption: ConsumptionProfile;
+}
+
 /** Bairro ou zona, o nível mais granular de área habitada. */
 export interface Neighborhood extends GeoEntityBase {
   type: "neighborhood";
-  /** Pode pertencer a um distrito ou diretamente a uma comuna, dependendo do detalhamento. */
+  /** Pode pertencer a um distrito ou directamente a uma comuna. */
   districtId?: string;
   communeId: string;
+  /** Perfil socioeconómico quando disponível para esta zona. */
+  socioeconomics?: RegionalSocioeconomics;
 }
 
 /** Um ponto específico no mapa (ex: onde um negócio pode ser instalado). */
@@ -74,8 +116,12 @@ export interface Location extends GeoEntityBase {
   address?: string;
 }
 
+/** Identificador de zona consultável pelo World Engine (bairro → município → província). */
+export type ZoneId = string;
+
 /** União de todas as entidades geográficas da hierarquia. */
 export type GeoEntity =
+  | Country
   | Province
   | Municipality
   | Commune

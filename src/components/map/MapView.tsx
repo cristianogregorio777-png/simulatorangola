@@ -177,9 +177,10 @@ export function MapView({
     if (!containerRef.current || mapRef.current) return;
 
     const initialView = getInitialMapView(activeProvinceId, activeMunicipalityId);
+    const mapContainer = containerRef.current;
 
     const map = new maplibregl.Map({
-      container: containerRef.current,
+      container: mapContainer,
       style: MAP_STYLE,
       center: initialView.center,
       zoom: initialView.zoom,
@@ -193,6 +194,14 @@ export function MapView({
 
     map.scrollZoom.enable();
     map.touchZoomRotate.disableRotation();
+
+    let resizeFrame = window.requestAnimationFrame(() => map.resize());
+    const resizeObserver = new ResizeObserver(() => {
+      window.cancelAnimationFrame(resizeFrame);
+      resizeFrame = window.requestAnimationFrame(() => map.resize());
+    });
+    resizeObserver.observe(mapContainer);
+
     const clearPopup = () => {
       popupRef.current?.remove();
       popupRef.current = null;
@@ -249,6 +258,8 @@ export function MapView({
     };
 
     map.on("load", () => {
+      map.resize();
+
       map.addSource(PROVINCE_SOURCE_ID, {
         type: "geojson",
         data: PROVINCE_COLLECTION,
@@ -546,6 +557,8 @@ export function MapView({
     });
 
     return () => {
+      window.cancelAnimationFrame(resizeFrame);
+      resizeObserver.disconnect();
       clearProvinceHover();
       clearMunicipalityHover();
       clearPopup();
