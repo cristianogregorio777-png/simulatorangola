@@ -34,6 +34,7 @@ interface AppStateContextValue {
   selectedBusinessLocation: BusinessLocation | null;
   hasHydrated: boolean;
   userEmail: string | null;
+  userId: string | null;
   selectProvince: (provinceId: string | null) => void;
   selectMunicipality: (municipalityId: string | null) => void;
   confirmLocation: () => void;
@@ -266,6 +267,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       selectedBusinessLocation,
       hasHydrated,
       userEmail,
+      userId,
       selectProvince,
       selectMunicipality,
       confirmLocation,
@@ -282,6 +284,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       selectProvince,
       selectMunicipality,
       userEmail,
+      userId,
       refreshSession,
     ],
   );

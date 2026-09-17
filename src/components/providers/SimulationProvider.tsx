@@ -6,11 +6,13 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useAppState } from "@/components/providers/AppStateProvider";
 import { SimulationEngine } from "@/lib/simulation/engine";
 import type { SimulationEventPayload, SimulationState } from "@/types/simulation";
+import { supabase } from "@/lib/supabase/client";
 
 export interface SkipSummary {
   fromDate: string;
@@ -47,7 +49,7 @@ interface SimulationContextValue {
 const SimulationContext = createContext<SimulationContextValue | null>(null);
 
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
-  const { selectedBusinessLocation } = useAppState();
+  const { selectedBusinessLocation, hasHydrated, userId } = useAppState();
   const [engine] = useState(
     () =>
       new SimulationEngine({
@@ -59,6 +61,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const [isSkipping, setIsSkipping] = useState(false);
   const [skipProgress, setSkipProgress] = useState(0);
   const [skipSummary, setSkipSummary] = useState<SkipSummary | null>(null);
+  const restoredUserRef = useRef<string | null>(null);
+  const restoreStartedUserRef = useRef<string | null>(null);
+  const persistedTickRef = useRef(0);
   const state = engine.getState();
 
   const commit = useCallback((nextEvents: SimulationEventPayload[] = []) => {
@@ -181,6 +186,85 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     engine.setSelectedZone(selectedBusinessLocation?.locationId ?? "zone-talatona");
   }, [engine, selectedBusinessLocation?.locationId]);
 
+  useEffect(() => {
+    const client = supabase;
+    if (!client || !hasHydrated || !userId || restoreStartedUserRef.current === userId) return;
+    restoreStartedUserRef.current = userId;
+
+    const restore = async () => {
+      const { data } = await client
+        .from("simulation_states")
+        .select("current_tick, simulated_date, macro_indicators, state_payload")
+        .eq("user_id", userId)
+        .maybeSingle();
+      const payload = data?.state_payload;
+      if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+        engine.hydrateState(payload as Partial<SimulationState>);
+        persistedTickRef.current = engine.getState().clock.tick;
+      }
+      restoredUserRef.current = userId;
+      window.setTimeout(() => forceUpdate((value) => value + 1), 0);
+    };
+
+    void restore();
+  }, [engine, hasHydrated, userId]);
+
+  useEffect(() => {
+    const client = supabase;
+    if (!client || !hasHydrated || !userId || restoredUserRef.current !== userId) return;
+    const current = engine.getState();
+    const business = current.businesses[0];
+    const date = `${current.clock.year}-${String(current.clock.month).padStart(2, "0")}-${String(current.clock.day).padStart(2, "0")}`;
+
+    void client.from("simulation_states").upsert(
+      {
+        user_id: userId,
+        current_tick: current.clock.tick,
+        simulated_date: date,
+        macro_indicators: {
+          usd_exchange_rate: current.economy.exchangeRateUsdAoa,
+          inflation_rate: current.economy.inflation * 100,
+          bna_interest_rate: current.economy.interestRate * 100,
+          forex_scarcity_level: current.macro.forexScarcityIndex,
+        },
+        state_payload: current,
+        cash_balance: business?.cashAoa ?? 0,
+        today_revenue: business?.lastTick?.grossRevenueAoa ?? 0,
+        today_expenses:
+          (business?.lastTick?.variableCostsAoa ?? 0) +
+          (business?.lastTick?.fixedCostsAoa ?? 0),
+        today_profit: business?.lastTick?.netProfitAoa ?? 0,
+        progress: Math.min(100, current.clock.tick),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+
+    if (current.clock.tick > persistedTickRef.current) {
+      const entries = current.history.filter((entry) => entry.tick > persistedTickRef.current);
+      persistedTickRef.current = current.clock.tick;
+      void Promise.all(
+        entries.flatMap((entry) =>
+          entry.eventTypes.map((eventType) =>
+            client.from("simulation_logs").insert({
+              user_id: userId,
+              tick_number: entry.tick,
+              simulated_date: toIsoDate(entry.date),
+              event_type: eventType,
+              title: eventType,
+              description: entry.automaticDecisions.join(" ") || null,
+              impact_data: {
+                cashAoa: entry.cashAoa,
+                revenueAoa: entry.grossRevenueAoa,
+                demandIndex: entry.demandIndex,
+              },
+            }),
+          ),
+        ),
+      );
+    }
+  }, [engine, hasHydrated, state, userId]);
+
   const value = useMemo(
     () => ({
       state,
@@ -209,4 +293,9 @@ export function useSimulation() {
   const context = useContext(SimulationContext);
   if (!context) throw new Error("useSimulation must be used within SimulationProvider");
   return context;
+}
+
+function toIsoDate(displayDate: string): string {
+  const [day, month, year] = displayDate.split("/");
+  return `${year}-${month}-${day}`;
 }

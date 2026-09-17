@@ -58,6 +58,19 @@ export class SimulationEngine {
     return this.bus;
   }
 
+  hydrateState(payload: Partial<SimulationState>): void {
+    this.state = {
+      ...this.state,
+      ...payload,
+      clock: { ...this.state.clock, ...(payload.clock ?? {}) },
+      economy: { ...this.state.economy, ...(payload.economy ?? {}) },
+      macro: { ...this.state.macro, ...(payload.macro ?? {}) },
+      businesses: payload.businesses ?? this.state.businesses,
+      activeEvents: payload.activeEvents ?? this.state.activeEvents,
+      history: payload.history ?? this.state.history,
+    };
+  }
+
   registerAgent(agentId: string): BaseSimulationAgent {
     const agent = new BaseSimulationAgent(
       agentId,
